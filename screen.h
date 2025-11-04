@@ -52,12 +52,12 @@ private:
     GraphicContext _context;
     std::stack<GraphicContext> _context_stack;
 
-    bool IsInBounds(int x, int y);
+    bool IsInBounds(uint32_t x, uint32_t y);
 public:
     const uint32_t width, height;
-    const double aspect_ratio;
-    const uint32_t area;
     const uint32_t half_width, half_height;
+    const uint32_t area;
+    const double aspect_ratio;
 
     Screen(uint32_t width, uint32_t height);
     ~Screen();

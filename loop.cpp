@@ -44,7 +44,7 @@ void Loop::UpdateTick() {
 void Loop::UpdateInput() {
     memset(keystate, 0, 256);
     if (_kbhit()) {
-        char keycode = _getch();
+        uint8_t keycode = _getch();
         keystate[keycode] = 1;
     }
 }

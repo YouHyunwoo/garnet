@@ -7,7 +7,7 @@
 
 BufferCell default_cell;
 
-bool Screen::IsInBounds(int x, int y) {
+bool Screen::IsInBounds(uint32_t x, uint32_t y) {
     return (
         0 <= x && x < width &&
         0 <= y && y < height
@@ -16,19 +16,19 @@ bool Screen::IsInBounds(int x, int y) {
 
 Screen::Screen(uint32_t width, uint32_t height) :
     width(width), height(height),
+    half_width(width >> 1), half_height(height >> 1),
     area(width * height),
-    half_width(width / 2), half_height(height / 2),
     aspect_ratio((double)height / width) {
     _buffer = new BufferCell*[height];
 
-    for (int r = 0; r < height; r++)
+    for (uint32_t r = 0; r < height; r++)
         _buffer[r] = new BufferCell[width]; // TODO: default value check
 
     SetConsoleOutputCP(CP_UTF8);
 }
 
 Screen::~Screen() {
-    for (int r = 0; r < height; r++)
+    for (uint32_t r = 0; r < height; r++)
         delete[] _buffer[r];
     delete[] _buffer;
 }
@@ -36,16 +36,16 @@ Screen::~Screen() {
 void Screen::ClearScreen() { printf("\x1b[2J"); }
 
 void Screen::ClearBuffer() {
-    for (int r = 0; r < height; r++)
-        for (int c = 0; c < width; c++)
+    for (uint32_t r = 0; r < height; r++)
+        for (uint32_t c = 0; c < width; c++)
             _buffer[r][c] = default_cell;
 }
 
 void Screen::RenderBuffer() {
     bool is_empty_continued = false;
 
-    for (int r = 0; r < height; r++) {
-        for (int c = 0; c < width; c++) {
+    for (uint32_t r = 0; r < height; r++) {
+        for (uint32_t c = 0; c < width; c++) {
             auto& cell = _buffer[r][c];
             if (cell.is_empty) {
                 if (!is_empty_continued) {
@@ -63,7 +63,7 @@ void Screen::RenderBuffer() {
                     cell.foreground_tcolor.r, cell.foreground_tcolor.g, cell.foreground_tcolor.b,
                     cell.background_tcolor.r, cell.background_tcolor.g, cell.background_tcolor.b);
             else
-                printf("\x1b[%d;%d;%dm", (cell.is_dim ? 2 : 22), cell.foreground_color, cell.background_color);
+                printf("\x1b[%d;%d;%dm", (cell.is_dim ? 2 : 22), (int)cell.foreground_color, (int)cell.background_color);
 
             if (cell.character == -1)
                 printf("\xE2\x96\x80");
@@ -101,11 +101,11 @@ void Screen::DrawTextWithFormat(int x, int y, const char* format, ...) {
     va_list args;
     va_start(args, format);
 
-    int len = vsnprintf(nullptr, 0, format, args);
+    uint32_t len = vsnprintf(nullptr, 0, format, args);
     if (len <= 0) { throw std::runtime_error( "Error during formatting." ); }
     char* buf = new char[len + 1];
     vsnprintf(buf, len + 1, format, args);
-    for (int i = 0, xi = x, yi = y; i < len; i++) {
+    for (uint32_t i = 0, xi = x, yi = y; i < len; i++) {
         _buffer[yi][xi] = _context;
         _buffer[yi][xi].is_empty = false;
         _buffer[yi][xi].character = buf[i];
