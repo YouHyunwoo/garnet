@@ -42,36 +42,71 @@ void Screen::ClearBuffer() {
 }
 
 void Screen::RenderBuffer() {
+    std::string output;
+    output.reserve(width * height * 30);
+
     bool is_empty_continued = false;
+    BufferCell* prev_cell = nullptr;
 
     for (uint32_t r = 0; r < height; r++) {
         for (uint32_t c = 0; c < width; c++) {
             auto& cell = _buffer[r][c];
             if (cell.is_empty) {
                 if (!is_empty_continued) {
-                    printf("\x1b[39;49m");
+                    output += "\x1b[39;49m";
                     is_empty_continued = true;
                 }
-                putchar(' ');
+                output += ' ';
+                prev_cell = nullptr;
                 continue;
             }
 
             is_empty_continued = false;
 
-            if (cell.is_true_color)
-                printf("\x1b[38;2;%d;%d;%dm\x1b[48;2;%d;%d;%dm",
-                    cell.foreground_tcolor.r, cell.foreground_tcolor.g, cell.foreground_tcolor.b,
-                    cell.background_tcolor.r, cell.background_tcolor.g, cell.background_tcolor.b);
-            else
-                printf("\x1b[%d;%d;%dm", (cell.is_dim ? 2 : 22), (int)cell.foreground_color, (int)cell.background_color);
+            bool is_color_changed = !prev_cell ||
+                cell.is_true_color != prev_cell->is_true_color ||
+                (
+                    cell.is_true_color
+                    ? (
+                        cell.foreground_tcolor.r != prev_cell->foreground_tcolor.r ||
+                        cell.foreground_tcolor.g != prev_cell->foreground_tcolor.g ||
+                        cell.foreground_tcolor.b != prev_cell->foreground_tcolor.b ||
+                        cell.background_tcolor.r != prev_cell->background_tcolor.r ||
+                        cell.background_tcolor.g != prev_cell->background_tcolor.g ||
+                        cell.background_tcolor.b != prev_cell->background_tcolor.b
+                    )
+                    : (
+                        cell.is_dim != prev_cell->is_dim ||
+                        cell.foreground_color != prev_cell->foreground_color ||
+                        cell.background_color != prev_cell->background_color
+                    )
+                );
+
+            if (is_color_changed) {
+                char buf[64];
+                if (cell.is_true_color)
+                    snprintf(buf, sizeof(buf), "\x1b[38;2;%d;%d;%dm\x1b[48;2;%d;%d;%dm",
+                        cell.foreground_tcolor.r, cell.foreground_tcolor.g, cell.foreground_tcolor.b,
+                        cell.background_tcolor.r, cell.background_tcolor.g, cell.background_tcolor.b);
+                else
+                    snprintf(buf, sizeof(buf), "\x1b[%d;%d;%dm",
+                        (cell.is_dim ? 2 : 22), (int)cell.foreground_color, (int)cell.background_color);
+                output += buf;
+            }
 
             if (cell.character == -1)
-                printf("\xE2\x96\x80");
+                output += "\xE2\x96\x80";
             else
-                putchar(cell.character);
+                output += cell.character;
+            
+            prev_cell = &cell;
         }
-        putchar('\n');
+
+        output += '\n';
+        prev_cell = nullptr;
     }
+
+    fwrite(output.data(), 1, output.size(), stdout);
 }
 
 bool Screen::IsBufferEmpty(int x, int y) {

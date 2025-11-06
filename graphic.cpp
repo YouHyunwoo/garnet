@@ -197,15 +197,16 @@ void Graphic::Flush() {
     _screen.SaveContext();
     _screen.SetTrueColor();
     _screen.SetCharacter(-1);
-    int index = 0;
-    for (int r = 0; r < height; r += 2) {
+    Color* buffer = _canvas;
+    int half_height = height >> 1;
+    for (int r = 0; r < half_height; r++) {
         for (int c = 0; c < width; c++) {
-            _screen.SetForegroundTrueColor(_canvas[index]);
-            _screen.SetBackgroundTrueColor(_canvas[index + width]);
-            _screen.DrawPoint(c, r / 2);
-            index++;
+            _screen.SetForegroundTrueColor(*buffer);
+            _screen.SetBackgroundTrueColor(buffer[width]);
+            _screen.DrawPoint(c, r);
+            buffer++;
         }
-        index += width;
+        buffer += width;
     }
     _screen.RestoreContext();
 }
