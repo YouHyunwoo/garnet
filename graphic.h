@@ -15,6 +15,8 @@ public:
     ~Graphic();
     void Clear();
     void DrawPoint(int x, int y, const Color& color);
+    void DrawLine(int x1, int y1, int x2, int y2, const Color& color);
+    void DrawTriangle(int x1, int y1, int x2, int y2, int x3, int y3, const Color& color);
     void Flush();
 };
 
