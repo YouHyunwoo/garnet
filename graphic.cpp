@@ -14,7 +14,7 @@ bool Graphic::IsInBounds(int x, int y) {
     );
 }
 
-Graphic::Graphic(Screen& screen) : _screen(screen), width(screen.width), height(screen.height * 2) {
+Graphic::Graphic(Screen &screen) : _screen(screen), width(screen.width), height(screen.height * 2) {
     _canvas = new Color[screen.width * screen.height * 2];
     memset(_canvas, 0, sizeof(Color) * width * height);
 }
@@ -27,12 +27,12 @@ void Graphic::Clear() {
     memset(_canvas, 0, sizeof(Color) * width * height);
 }
 
-void Graphic::DrawPoint(int x, int y, const Color& color) {
+void Graphic::DrawPoint(int x, int y, const Color &color) {
     if (!IsInBounds(x, y)) return;
     _canvas[y * width + x] = color;
 }
 
-void Graphic::DrawLine(int x1, int y1, int x2, int y2, const Color& color) {
+void Graphic::DrawLine(int x1, int y1, int x2, int y2, const Color &color) {
     int dx = abs(x2 - x1);
     int dy = abs(y2 - y1);
     int sx = (x1 < x2) ? 1 : -1;
@@ -54,7 +54,7 @@ void Graphic::DrawLine(int x1, int y1, int x2, int y2, const Color& color) {
     }
 }
 
-void Graphic::DrawTriangle(int x1, int y1, int x2, int y2, int x3, int y3, const Color& color) {
+void Graphic::DrawTriangle(int x1, int y1, int x2, int y2, int x3, int y3, const Color &color) {
     // 28.4 fixed-point coordinates
     const int Y1 = std::lround(16.0f * y1);
     const int Y2 = std::lround(16.0f * y2);
@@ -193,6 +193,20 @@ void Graphic::DrawTriangle(int x1, int y1, int x2, int y2, int x3, int y3, const
     }
 }
 
+void Graphic::DrawTexture(int x, int y, Texture &texture) {
+    Color* buffer = _canvas + x + y * width;
+    uint8_t* raw_color = texture.GetRawColor(0, 0);
+    for (int r = 0; r < texture.height; r++) {
+        for (int c = 0; c < texture.width; c++) {
+            buffer->r = *(raw_color++);
+            buffer->g = *(raw_color++);
+            buffer->b = *(raw_color++);
+            buffer++;
+        }
+        buffer += width - texture.width;
+    }
+}
+
 void Graphic::Flush() {
     _screen.SaveContext();
     _screen.SetTrueColor();
@@ -211,7 +225,7 @@ void Graphic::Flush() {
     _screen.RestoreContext();
 }
 
-Texture::Texture(uint8_t* data, int width, int height, int channels)
+Texture::Texture(uint8_t *data, int width, int height, int channels)
     : _data(data), width(width), height(height), channels(channels) {
 }
 
@@ -224,13 +238,13 @@ uint8_t* Texture::GetRawColor(double u, double v) {
     return _data + ((int)floor(v * height) * width + (int)floor(u * width)) * channels;
 }
 
-void Texture::GetColor(double u, double v, Color& out) {
+void Texture::GetColor(double u, double v, Color &out) {
     memcpy(&out, GetRawColor(u, v), 3);
 }
 
 Texture* Texture::Load(std::string filename) {
     int width, height, channels;
-    unsigned char* data = stbi_load(filename.c_str(), &width, &height, &channels, 0);
+    unsigned char *data = stbi_load(filename.c_str(), &width, &height, &channels, 0);
     if (data == nullptr) return nullptr;
     Texture* result = new Texture(data, width, height, channels);
     return result;
