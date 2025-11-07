@@ -29,7 +29,17 @@ void Graphic::Clear() {
 
 void Graphic::DrawPoint(int x, int y, const Color &color) {
     if (!IsInBounds(x, y)) return;
-    _canvas[y * width + x] = color;
+    if (color.a == 255)
+        _canvas[y * width + x] = color;
+    else if (color.a == 0);
+    else {
+        Color* c = _canvas + y * width + x;
+        double alpha = color.a / 255.0;
+        c->r = static_cast<int>(c->r + (color.r - c->r) * alpha);
+        c->g = static_cast<int>(c->g + (color.g - c->g) * alpha);
+        c->b = static_cast<int>(c->b + (color.b - c->b) * alpha);
+        c->a = 255;
+    }
 }
 
 void Graphic::DrawLine(int x1, int y1, int x2, int y2, const Color &color) {
@@ -150,7 +160,7 @@ void Graphic::DrawTriangle(int x1, int y1, int x2, int y2, int x3, int y3, const
                 {
                     for(int ix = x; ix < x + q; ix++)
                     {
-                        _canvas[ix] = color;
+                        DrawPoint(ix, iy, color);
                     }
 
                     buffer += width;
@@ -172,7 +182,7 @@ void Graphic::DrawTriangle(int x1, int y1, int x2, int y2, int x3, int y3, const
                     {
                         if(CX1 > 0 && CX2 > 0 && CX3 > 0)
                         {
-                            buffer[ix] = color;
+                            DrawPoint(ix, iy, color);
                         }
 
                         CX1 -= FDY12;
@@ -194,17 +204,12 @@ void Graphic::DrawTriangle(int x1, int y1, int x2, int y2, int x3, int y3, const
 }
 
 void Graphic::DrawTexture(int x, int y, Texture &texture) {
-    Color* buffer = _canvas + x + y * width;
-    uint8_t* raw_color = texture.data;
+    Color color;
     for (int r = 0; r < texture.height; r++) {
         for (int c = 0; c < texture.width; c++) {
-            buffer->r = *(raw_color++);
-            buffer->g = *(raw_color++);
-            buffer->b = *(raw_color++);
-            if (texture.channels == 4) raw_color++;
-            buffer++;
+            texture.GetColor(c, r, color);
+            DrawPoint(x + c, y + r, color);
         }
-        buffer += width - texture.width;
     }
 }
 
@@ -240,7 +245,7 @@ uint8_t* Texture::GetRawColor(uint32_t x, uint32_t y) {
 }
 
 void Texture::GetColor(uint32_t x, uint32_t y, Color &out) {
-    memcpy(&out, GetRawColor(x, y), 3);
+    memcpy(&out, GetRawColor(x, y), channels);
 }
 
 uint8_t* Texture::GetRawColorByUV(double u, double v) {
@@ -248,7 +253,7 @@ uint8_t* Texture::GetRawColorByUV(double u, double v) {
 }
 
 void Texture::GetColorByUV(double u, double v, Color &out) {
-    memcpy(&out, GetRawColorByUV(u, v), 3);
+    memcpy(&out, GetRawColorByUV(u, v), channels);
 }
 
 Texture* Texture::Load(std::string filename) {
