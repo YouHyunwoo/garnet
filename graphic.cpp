@@ -201,6 +201,7 @@ void Graphic::DrawTexture(int x, int y, Texture &texture) {
             buffer->r = *(raw_color++);
             buffer->g = *(raw_color++);
             buffer->b = *(raw_color++);
+            if (texture.channels == 4) raw_color++;
             buffer++;
         }
         buffer += width - texture.width;
