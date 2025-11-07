@@ -1,5 +1,4 @@
-#ifndef _GEOMETRY_H_
-#define _GEOMETRY_H_
+#pragma once
 
 struct Vector3 {
     double x, y, z;
@@ -39,5 +38,3 @@ extern Vector3 right;
 extern Vector3 left;
 extern Vector3 up;
 extern Vector3 down;
-
-#endif

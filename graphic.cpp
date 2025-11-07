@@ -1,44 +1,114 @@
 #include "graphic.h"
 
 #include <cmath>
-#include <algorithm>
-#include <cstring>
-#include <cstdlib>
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include <stdexcept>
+#define NOMINMAX
+#define NODRAWTEXT
+#include <windows.h>
+
+constexpr BufferCell default_buffer_cell;
+constexpr CanvasCell default_canvas_cell;
 
 bool Graphic::IsInBounds(int x, int y) {
     return (
-        0 <= x && x < width &&
-        0 <= y && y < height
+        0 <= x && x < static_cast<int>(width) &&
+        0 <= y && y < static_cast<int>(height)
     );
 }
 
-Graphic::Graphic(Screen &screen) : _screen(screen), width(screen.width), height(screen.height * 2) {
-    _canvas = new Color[screen.width * screen.height * 2];
-    memset(_canvas, 0, sizeof(Color) * width * height);
+Graphic::Graphic(Screen &screen) : _screen(screen), width(screen.width), height(screen.height << 1) {
+    _buffer = new BufferCell[width * _screen.height];
+    _canvas = new CanvasCell[width * height];
 }
 
 Graphic::~Graphic() {
-    delete _canvas;
+    delete[] _canvas;
+    delete[] _buffer;
 }
 
 void Graphic::Clear() {
-    memset(_canvas, 0, sizeof(Color) * width * height);
+    for (uint32_t i = 0; i < width * _screen.height; i++)
+        _buffer[i] = default_buffer_cell;
+    for (uint32_t i = 0; i < width * height; i++)
+        _canvas[i] = default_canvas_cell;
+}
+
+void Graphic::SetCharacter(char character) { _context.cell.character = character; }
+void Graphic::ResetCharacter() { _context.cell.character = default_buffer_cell.character; }
+
+void Graphic::SetDimMode() { _context.cell.is_dim = true; }
+void Graphic::ResetDimMode() { _context.cell.is_dim = false; }
+
+void Graphic::SetTrueColor() { _context.cell.color_mode = EColorMode::kTrueColor; }
+void Graphic::ResetTrueColor() { _context.cell.color_mode = EColorMode::kDefault; }
+
+void Graphic::SetForegroundColor(EColor color) { ResetTrueColor(); _context.cell.foreground_color = color; }
+void Graphic::ResetForegroundColor() { _context.cell.foreground_color = default_buffer_cell.foreground_color; }
+
+void Graphic::SetBackgroundColor(EColor color) { ResetTrueColor(); _context.cell.background_color = color; }
+void Graphic::ResetBackgroundColor() { _context.cell.background_color = default_buffer_cell.background_color; }
+
+void Graphic::SetForegroundTrueColor(const Color& color) { SetTrueColor(); _context.cell.foreground_true_color = color; }
+void Graphic::ResetForegroundTrueColor() { _context.cell.foreground_true_color = default_buffer_cell.foreground_true_color; }
+
+void Graphic::SetBackgroundTrueColor(const Color& color) { SetTrueColor(); _context.cell.background_true_color = color; }
+void Graphic::ResetBackgroundTrueColor() { _context.cell.background_true_color = default_buffer_cell.background_true_color; }
+
+void Graphic::DrawText(int x, int y, const std::string &text) {
+    x += _context.x;
+    y += _context.y >> 1;
+    if (!IsInBounds(x, y)) return;
+
+    for (size_t i = 0, xi = x, yi = y; i < text.length(); i++) {
+        _buffer[yi * width + xi] = _context.cell;
+        _buffer[yi * width + xi].is_empty = false;
+        _buffer[yi * width + xi].character = text[i];
+        if (++xi >= width) {
+            xi = 0;
+            if (++yi >= height) break;
+        }
+    }
+}
+
+void Graphic::DrawTextWithFormat(int x, int y, const char* format, ...) {
+    x += _context.x;
+    y += _context.y >> 1;
+    if (!IsInBounds(x, y)) return;
+
+    va_list args;
+    va_start(args, format);
+
+    uint32_t len = vsnprintf(nullptr, 0, format, args);
+    if (len <= 0) { throw std::runtime_error( "Error during formatting." ); }
+    char* buf = new char[len + 1];
+    vsnprintf(buf, len + 1, format, args);
+    for (uint32_t i = 0, xi = x, yi = y; i < len; i++) {
+        _buffer[yi * width + xi] = _context.cell;
+        _buffer[yi * width + xi].is_empty = false;
+        _buffer[yi * width + xi].character = buf[i];
+        if (++xi >= width) {
+            xi = 0;
+            if (++yi >= height) break;
+        }
+    }
+    
+    va_end(args);
 }
 
 void Graphic::DrawPoint(int x, int y, const Color &color) {
+    x += _context.x;
+    y += _context.y;
     if (!IsInBounds(x, y)) return;
     if (color.a == 255)
-        _canvas[y * width + x] = color;
+        _canvas[y * width + x] = { false, color };
     else if (color.a == 0);
     else {
-        Color* c = _canvas + y * width + x;
+        CanvasCell* c = _canvas + y * width + x;
         double alpha = color.a / 255.0;
-        c->r = static_cast<int>(c->r + (color.r - c->r) * alpha);
-        c->g = static_cast<int>(c->g + (color.g - c->g) * alpha);
-        c->b = static_cast<int>(c->b + (color.b - c->b) * alpha);
-        c->a = 255;
+        c->color.r = static_cast<int>(c->color.r + (color.r - c->color.r) * alpha);
+        c->color.g = static_cast<int>(c->color.g + (color.g - c->color.g) * alpha);
+        c->color.b = static_cast<int>(c->color.b + (color.b - c->color.b) * alpha);
+        c->color.a = 255;
     }
 }
 
@@ -105,7 +175,7 @@ void Graphic::DrawTriangle(int x1, int y1, int x2, int y2, int x3, int y3, const
     minx &= ~(q - 1);
     miny &= ~(q - 1);
 
-    Color* colorBuffer = _canvas;
+    CanvasCell* colorBuffer = _canvas;
     colorBuffer += miny * width;
 
     // Half-edge constants
@@ -151,7 +221,7 @@ void Graphic::DrawTriangle(int x1, int y1, int x2, int y2, int x3, int y3, const
             // Skip block when outside an edge
             if(a == 0x0 || b == 0x0 || c == 0x0) continue;
 
-            Color* buffer = colorBuffer;
+            CanvasCell* buffer = colorBuffer;
 
             // Accept whole block when totally covered
             if(a == 0xF && b == 0xF && c == 0xF)
@@ -213,53 +283,134 @@ void Graphic::DrawTexture(int x, int y, Texture &texture) {
     }
 }
 
-void Graphic::Flush() {
-    _screen.SaveContext();
-    _screen.SetTrueColor();
-    _screen.SetCharacter(-1);
-    Color* buffer = _canvas;
-    int half_height = height >> 1;
-    for (int r = 0; r < half_height; r++) {
-        for (int c = 0; c < width; c++) {
-            _screen.SetForegroundTrueColor(*buffer);
-            _screen.SetBackgroundTrueColor(buffer[width]);
-            _screen.DrawPoint(c, r);
-            buffer++;
+void Graphic::RenderCanvas() {
+    for (uint32_t r = 0; r < _screen.height; r++) {
+        for (uint32_t c = 0; c < width; c++) {
+            CanvasCell* top = _canvas + (r << 1) * width + c;
+            CanvasCell* bottom = top + width;
+            if (top->is_empty && bottom->is_empty) continue;
+            BufferCell* cell = _buffer + r * width + c;
+
+            cell->is_empty = false;
+            cell->color_mode = EColorMode::kTrueColor;
+            if (top->is_empty) {
+                cell->character = -2; // '?' U+2584
+                cell->foreground_true_color = bottom->color;
+                cell->background_true_color = { 0, 0, 0, 0 };
+            }
+            else if (bottom->is_empty) {
+                cell->character = -1; // '?' U+2580
+                cell->foreground_true_color = top->color;
+                cell->background_true_color = { 0, 0, 0, 0 };
+            }
+            else {
+                cell->character = -3; // ตัดู
+                cell->foreground_true_color = top->color;
+                cell->background_true_color = bottom->color;
+            }
         }
-        buffer += width;
     }
-    _screen.RestoreContext();
 }
 
-Texture::Texture(uint8_t *data, int width, int height, int channels)
-    : data(data), width(width), height(height), channels(channels) {
+void Graphic::RenderBuffer() {
+    std::string output;
+    output.reserve(width * height * 30);
+
+    bool is_empty_continued = false;
+    BufferCell* prev_cell = nullptr;
+
+    for (uint32_t r = 0; r < _screen.height; r++) {
+        for (uint32_t c = 0; c < width; c++) {
+            auto& cell = _buffer[r * width + c];
+            if (cell.is_empty) {
+                if (!is_empty_continued) {
+                    output += "\x1b[39;49m";
+                    is_empty_continued = true;
+                }
+                output += ' ';
+                prev_cell = nullptr;
+                continue;
+            }
+
+            is_empty_continued = false;
+
+            bool is_color_changed = !prev_cell ||
+                cell.color_mode != prev_cell->color_mode ||
+                (
+                    cell.color_mode == EColorMode::kTrueColor
+                    ? (
+                        cell.foreground_true_color.r != prev_cell->foreground_true_color.r ||
+                        cell.foreground_true_color.g != prev_cell->foreground_true_color.g ||
+                        cell.foreground_true_color.b != prev_cell->foreground_true_color.b ||
+                        cell.background_true_color.r != prev_cell->background_true_color.r ||
+                        cell.background_true_color.g != prev_cell->background_true_color.g ||
+                        cell.background_true_color.b != prev_cell->background_true_color.b
+                    )
+                    : (
+                        cell.is_dim != prev_cell->is_dim ||
+                        cell.foreground_color != prev_cell->foreground_color ||
+                        cell.background_color != prev_cell->background_color
+                    )
+                );
+
+            if (is_color_changed) {
+                char buf[64];
+                if (cell.color_mode == EColorMode::kTrueColor) {
+                    if (cell.character == -1) {
+                        snprintf(buf, sizeof(buf), "\x1b[38;2;%d;%d;%dm\x1b[49m",
+                            cell.foreground_true_color.r, cell.foreground_true_color.g, cell.foreground_true_color.b);
+                    }
+                    else if (cell.character == -2) {
+                        snprintf(buf, sizeof(buf), "\x1b[38;2;%d;%d;%dm\x1b[49m",
+                            cell.foreground_true_color.r, cell.foreground_true_color.g, cell.foreground_true_color.b);
+                    }
+                    else if (cell.character == -3) {
+                        snprintf(buf, sizeof(buf), "\x1b[38;2;%d;%d;%dm\x1b[48;2;%d;%d;%dm",
+                            cell.foreground_true_color.r, cell.foreground_true_color.g, cell.foreground_true_color.b,
+                            cell.background_true_color.r, cell.background_true_color.g, cell.background_true_color.b);
+                    }
+                }
+                else
+                    snprintf(buf, sizeof(buf), "\x1b[%d;%d;%dm",
+                        (cell.is_dim ? 2 : 22), (int)cell.foreground_color, (int)cell.background_color);
+                output += buf;
+            }
+
+            if (cell.character == -1)
+                output += "\xE2\x96\x80";
+            else if (cell.character == -2)
+                output += "\xE2\x96\x84";
+            else if (cell.character == -3)
+                output += "\xE2\x96\x80";
+            else
+                output += cell.character;
+            
+            prev_cell = &cell;
+        }
+
+        output += '\n';
+        prev_cell = nullptr;
+    }
+
+    fwrite(output.data(), 1, output.size(), stdout);
 }
 
-Texture::~Texture()
-{
-    free(data);
+void Graphic::Render() {
+    RenderCanvas();
+    RenderBuffer();
 }
 
-uint8_t* Texture::GetRawColor(uint32_t x, uint32_t y) {
-    return data + (y * width + x) * channels;
+void Graphic::Save() {
+    _contextStack.push(_context);
 }
 
-void Texture::GetColor(uint32_t x, uint32_t y, Color &out) {
-    memcpy(&out, GetRawColor(x, y), channels);
+void Graphic::Restore() {
+    if (_contextStack.empty()) return;
+    _context = _contextStack.top();
+    _contextStack.pop();
 }
 
-uint8_t* Texture::GetRawColorByUV(double u, double v) {
-    return data + ((int)floor(v * height) * width + (int)floor(u * width)) * channels;
-}
-
-void Texture::GetColorByUV(double u, double v, Color &out) {
-    memcpy(&out, GetRawColorByUV(u, v), channels);
-}
-
-Texture* Texture::Load(std::string filename) {
-    int width, height, channels;
-    unsigned char *data = stbi_load(filename.c_str(), &width, &height, &channels, 0);
-    if (data == nullptr) return nullptr;
-    Texture* result = new Texture(data, width, height, channels);
-    return result;
+void Graphic::Translate(int dx, int dy) {
+    _context.x += dx;
+    _context.y += dy;
 }

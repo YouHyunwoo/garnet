@@ -1,39 +1,33 @@
-#ifndef _LOOP_H_
-#define _LOOP_H_
+#pragma once
 
 #include <time.h>
 #include "screen.h"
+#include "graphic.h"
 
 class Loop {
 private:
-    Screen* _screen;
     bool _is_running = false;
     clock_t _current_clock, _last_clock;
     double _delta_time; // sec
     int _frame_count_for_fps;
     clock_t _clock_for_fps;
-    
-    void Initialize(Screen* screen);
+    void Initialize();
     void Update();
     void UpdateTick();
-    void UpdateInput();
     void Render();
     void Dispose();
-    
 protected:
+    Screen& _screen;
+    Graphic _graphic;
     virtual void OnInitialize() {}
     virtual void OnUpdate(double delta_time) {}
-    virtual void OnRender() {}
+    virtual void OnRender(Graphic& graphic) {}
     virtual void OnDispose() {}
-    
 public:
     uint64_t frame_count;
-    float fps;
+    double fps;
     bool is_fps_visible = true;
-    char keystate[256];
-
-    void Start(Screen* screen);
+    Loop(Screen &screen);
+    void Run();
     void Quit();
 };
-
-#endif

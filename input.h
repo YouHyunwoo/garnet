@@ -1,8 +1,5 @@
-#ifndef _INPUT_H_
-#define _INPUT_H_
+#pragma once
 
 bool IsKeyPressed(int vkey);
 bool IsKeyDown(int vkey);
 bool IsKeyUp(int vkey);
-
-#endif

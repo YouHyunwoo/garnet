@@ -1,10 +1,12 @@
-#ifndef _GARNET_H_
-#define _GARNET_H_
+#pragma once
+
+#define NODRAWTEXT
+#include <windows.h>
 
 #include "loop.h"
 #include "input.h"
 #include "screen.h"
+#include "color.h"
+#include "texture.h"
 #include "graphic.h"
 #include "geometry.h"
-
-#endif
