@@ -25,12 +25,14 @@ struct BufferCell {
 struct CanvasCell {
     bool is_empty = true;
     Color color = { 50, 50, 50, 255 };
+    double z_index = 0.0;
 };
 
 struct GraphicContext {
     BufferCell cell;
     int32_t x = 0, y = 0;
     Color color = { 255, 255, 255, 255 };
+    double z_index = 0.0;
 };
 
 class Graphic {
@@ -67,6 +69,8 @@ public:
     void DrawPoint(int x, int y, const Color &color);
     void DrawLine(int x1, int y1, int x2, int y2, const Color &color);
     void DrawTriangle(int x1, int y1, int x2, int y2, int x3, int y3, const Color &color);
+    void DrawRectangle(int x, int y, int width, int height, const Color &color);
+    void FillRectangle(int x, int y, int width, int height, const Color &color);
     void DrawTexture(int x, int y, Texture &texture);
     void Render();
     void Save();

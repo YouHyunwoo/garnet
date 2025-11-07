@@ -99,16 +99,19 @@ void Graphic::DrawPoint(int x, int y, const Color &color) {
     x += _context.x;
     y += _context.y;
     if (!IsInBounds(x, y)) return;
+    CanvasCell* cell = _canvas + y * width + x;
+    if (_context.z_index < cell->z_index) return;
+    cell->z_index = _context.z_index;
     if (color.a == 255)
-        _canvas[y * width + x] = { false, color };
+        _canvas[y * width + x] = { false, color, _context.z_index };
     else if (color.a == 0);
     else {
-        CanvasCell* c = _canvas + y * width + x;
         double alpha = color.a / 255.0;
-        c->color.r = static_cast<int>(c->color.r + (color.r - c->color.r) * alpha);
-        c->color.g = static_cast<int>(c->color.g + (color.g - c->color.g) * alpha);
-        c->color.b = static_cast<int>(c->color.b + (color.b - c->color.b) * alpha);
-        c->color.a = 255;
+        cell->color.r = static_cast<int>(cell->color.r + (color.r - cell->color.r) * alpha);
+        cell->color.g = static_cast<int>(cell->color.g + (color.g - cell->color.g) * alpha);
+        cell->color.b = static_cast<int>(cell->color.b + (color.b - cell->color.b) * alpha);
+        cell->color.a = 255;
+        cell->z_index = _context.z_index;
     }
 }
 
@@ -273,6 +276,21 @@ void Graphic::DrawTriangle(int x1, int y1, int x2, int y2, int x3, int y3, const
     }
 }
 
+void Graphic::DrawRectangle(int x, int y, int width, int height, const Color &color) {
+    DrawLine(x, y, x + width - 1, y, color);
+    DrawLine(x, y, x, y + height - 1, color);
+    DrawLine(x + width - 1, y, x + width - 1, y + height - 1, color);
+    DrawLine(x, y + height - 1, x + width - 1, y + height - 1, color);
+}
+
+void Graphic::FillRectangle(int x, int y, int width, int height, const Color &color) {
+    for (int r = 0; r < height; r++) {
+        for (int c = 0; c < width; c++) {
+            DrawPoint(x + c, y + r, color);
+        }
+    }
+}
+
 void Graphic::DrawTexture(int x, int y, Texture &texture) {
     Color color;
     for (int r = 0; r < texture.height; r++) {
@@ -304,7 +322,7 @@ void Graphic::RenderCanvas() {
                 cell->background_true_color = { 0, 0, 0, 0 };
             }
             else {
-                cell->character = -3; // µÑ´Ù
+                cell->character = -3; // ï¿½Ñ´ï¿½
                 cell->foreground_true_color = top->color;
                 cell->background_true_color = bottom->color;
             }
