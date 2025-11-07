@@ -195,7 +195,7 @@ void Graphic::DrawTriangle(int x1, int y1, int x2, int y2, int x3, int y3, const
 
 void Graphic::DrawTexture(int x, int y, Texture &texture) {
     Color* buffer = _canvas + x + y * width;
-    uint8_t* raw_color = texture.GetRawColor(0, 0);
+    uint8_t* raw_color = texture.data;
     for (int r = 0; r < texture.height; r++) {
         for (int c = 0; c < texture.width; c++) {
             buffer->r = *(raw_color++);
@@ -227,20 +227,28 @@ void Graphic::Flush() {
 }
 
 Texture::Texture(uint8_t *data, int width, int height, int channels)
-    : _data(data), width(width), height(height), channels(channels) {
+    : data(data), width(width), height(height), channels(channels) {
 }
 
 Texture::~Texture()
 {
-    free(_data);
+    free(data);
 }
 
-uint8_t* Texture::GetRawColor(double u, double v) {
-    return _data + ((int)floor(v * height) * width + (int)floor(u * width)) * channels;
+uint8_t* Texture::GetRawColor(uint32_t x, uint32_t y) {
+    return data + (y * width + x) * channels;
 }
 
-void Texture::GetColor(double u, double v, Color &out) {
-    memcpy(&out, GetRawColor(u, v), 3);
+void Texture::GetColor(uint32_t x, uint32_t y, Color &out) {
+    memcpy(&out, GetRawColor(x, y), 3);
+}
+
+uint8_t* Texture::GetRawColorByUV(double u, double v) {
+    return data + ((int)floor(v * height) * width + (int)floor(u * width)) * channels;
+}
+
+void Texture::GetColorByUV(double u, double v, Color &out) {
+    memcpy(&out, GetRawColorByUV(u, v), 3);
 }
 
 Texture* Texture::Load(std::string filename) {
