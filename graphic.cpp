@@ -54,6 +54,8 @@ void Graphic::ResetForegroundTrueColor() { _context.cell.foreground_true_color =
 void Graphic::SetBackgroundTrueColor(const Color& color) { SetTrueColor(); _context.cell.background_true_color = color; }
 void Graphic::ResetBackgroundTrueColor() { _context.cell.background_true_color = default_buffer_cell.background_true_color; }
 
+void Graphic::SetZIndex(double z_index) { _context.z_index = z_index; }
+
 void Graphic::DrawText(int x, int y, const std::string &text) {
     x += _context.x;
     y += _context.y >> 1;

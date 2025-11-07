@@ -64,6 +64,7 @@ public:
     void ResetForegroundTrueColor();
     void SetBackgroundTrueColor(const Color& color);
     void ResetBackgroundTrueColor();
+    void SetZIndex(double z_index);
     void DrawText(int x, int y, const std::string &text);
     void DrawTextWithFormat(int x, int y, const char* format, ...);
     void DrawPoint(int x, int y, const Color &color);
