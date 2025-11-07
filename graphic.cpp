@@ -103,16 +103,16 @@ void Graphic::DrawPoint(int x, int y, const Color &color) {
     if (!IsInBounds(x, y)) return;
     CanvasCell* cell = _canvas + y * width + x;
     if (_context.z_index < cell->z_index) return;
-    cell->z_index = _context.z_index;
-    if (color.a == 255)
-        _canvas[y * width + x] = { false, color, _context.z_index };
+    if (color.a == 255) {
+        *cell = { false, color, _context.z_index };
+    }
     else if (color.a == 0);
     else {
+        cell->is_empty = false;
         double alpha = color.a / 255.0;
         cell->color.r = static_cast<int>(cell->color.r + (color.r - cell->color.r) * alpha);
         cell->color.g = static_cast<int>(cell->color.g + (color.g - cell->color.g) * alpha);
         cell->color.b = static_cast<int>(cell->color.b + (color.b - cell->color.b) * alpha);
-        cell->color.a = 255;
         cell->z_index = _context.z_index;
     }
 }
