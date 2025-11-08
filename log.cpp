@@ -1,6 +1,6 @@
 #include "log.h"
 
-bool Log::is_visible = true;
+bool Log::is_visible = false;
 std::string Log::buffer = "";
 
 void Log::Render(Graphic& graphic) {
