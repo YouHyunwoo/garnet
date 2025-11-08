@@ -291,10 +291,10 @@ void Graphic::DrawTriangle(int x1, int y1, int x2, int y2, int x3, int y3, const
 }
 
 void Graphic::DrawRectangle(int x, int y, int width, int height, const Color &color) {
-    DrawLine(x, y, x + width - 1, y, color);
-    DrawLine(x, y, x, y + height - 1, color);
-    DrawLine(x + width - 1, y, x + width - 1, y + height - 1, color);
-    DrawLine(x, y + height - 1, x + width - 1, y + height - 1, color);
+    DrawLine(x + 1, y, x + width - 1, y, color);
+    DrawLine(x, y, x, y + height - 2, color);
+    DrawLine(x + width - 1, y + 1, x + width - 1, y + height - 1, color);
+    DrawLine(x, y + height - 1, x + width - 2, y + height - 1, color);
 }
 
 void Graphic::FillRectangle(int x, int y, int width, int height, const Color &color) {
