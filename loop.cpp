@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <conio.h>
 #include "input.h"
+#include "object.h"
 #include "log.h"
 
 constexpr uint32_t kMaxFrameCount = UINT_MAX;
@@ -11,7 +12,7 @@ constexpr double kClockPerSec = static_cast<double>(CLOCKS_PER_SEC);
 
 void Loop::Initialize() {
     _screen.Clear();
-
+    
     srand(static_cast<uint32_t>(time(NULL))); // initialize random seed
     setvbuf(stdout, NULL, _IOFBF, _screen.area); // initialize screen buffer size
     printf("\x1b[?25l"); // hide cursor
@@ -19,6 +20,8 @@ void Loop::Initialize() {
     frame_count = _frame_count_for_fps = 0;
     fps = 0;
     _is_running = true;
+    _root_object = new Object();
+    ObjectRenderer::AddObject(_root_object);
 
     OnInitialize();
 }
@@ -50,6 +53,9 @@ void Loop::Render() {
     _graphic.Clear();
 
     _graphic.Save();
+    ObjectRenderer::Render(_graphic);
+    _graphic.Restore();
+    _graphic.Save();
     OnRender(_graphic);
     _graphic.Restore();
 
@@ -66,6 +72,8 @@ void Loop::Render() {
 }
 
 void Loop::Dispose() {
+    delete _root_object;
+
     OnDispose();
 
     printf("\x1b[0m"); // reset color

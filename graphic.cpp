@@ -5,6 +5,12 @@
 #define NOMINMAX
 #define NODRAWTEXT
 #include <windows.h>
+#include "screen.h"
+#include "fragment_input.h"
+#include "sprite.h"
+#include "texture.h"
+#include "shader.h"
+#include "object.h"
 
 constexpr BufferCell default_buffer_cell;
 constexpr CanvasCell default_canvas_cell;
@@ -59,7 +65,7 @@ void Graphic::SetZIndex(double z_index) { _context.z_index = z_index; }
 void Graphic::DrawText(int x, int y, const std::string &text) {
     x += _context.x;
     y += _context.y >> 1;
-    for (size_t i = 0, xi = x, yi = y; i < text.length(); i++) {
+    for (uint32_t i = 0, xi = x, yi = y; i < text.length(); i++) {
         if (!IsInBounds(xi, yi)) continue;
         _buffer[yi * width + xi] = _context.cell;
         _buffer[yi * width + xi].is_empty = false;
@@ -309,6 +315,40 @@ void Graphic::DrawTexture(int x, int y, Texture &texture) {
     }
 }
 
+void Graphic::DrawSprite(int x, int y, Sprite &sprite, Object *object) {
+    Texture* texture = sprite.texture;
+    Shader* shader = sprite.shader;
+    FragmentInput frag_input;
+    frag_input.object = object;
+    frag_input.data = shader ? shader->data : nullptr;
+    
+    int tx = x - static_cast<int>(sprite.pivot_x * texture->width);
+    int ty = y - static_cast<int>(sprite.pivot_y * texture->height);
+    
+    Color color;
+    for (int r = 0; r < texture->height; r++) {
+        for (int c = 0; c < texture->width; c++) {
+            frag_input.world_x = _context.x + tx + c;
+            frag_input.world_y = _context.y + ty + r;
+            frag_input.local_x = static_cast<int>(object ? (tx + c - object->x) : (tx + c));
+            frag_input.local_y = static_cast<int>(object ? (ty + r - object->y) : (ty + r));
+            frag_input.x = c;
+            frag_input.y = r;
+            frag_input.u = static_cast<double>(c) / (texture->width - 1);
+            frag_input.v = static_cast<double>(r) / (texture->height - 1);
+
+            if (shader) {
+                color = shader->Shade(frag_input);
+            }
+            else {
+                texture->GetColor(c, r, color);
+            }
+
+            DrawPoint(tx + c, ty + r, color);
+        }
+    }
+}
+
 void Graphic::RenderCanvas() {
     for (uint32_t r = 0; r < _screen.height; r++) {
         for (uint32_t c = 0; c < width; c++) {
@@ -330,7 +370,7 @@ void Graphic::RenderCanvas() {
                 cell->background_true_color = { 0, 0, 0, 0 };
             }
             else {
-                cell->character = -3; // �Ѵ�
+                cell->character = -3; // '?' U+2580
                 cell->foreground_true_color = top->color;
                 cell->background_true_color = bottom->color;
             }

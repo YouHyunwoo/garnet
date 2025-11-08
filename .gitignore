@@ -45,3 +45,6 @@ CMakeLists.txt
 build/
 sample.cpp
 images/
+shaders/
+resource.h
+resource.cpp

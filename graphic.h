@@ -2,9 +2,12 @@
 
 #include <stack>
 #include <string>
-#include "screen.h"
 #include "color.h"
-#include "texture.h"
+
+class Screen;
+class Texture;
+class Sprite;
+class Object;
 
 enum class EColorMode {
     kDefault,
@@ -73,6 +76,7 @@ public:
     void DrawRectangle(int x, int y, int width, int height, const Color &color);
     void FillRectangle(int x, int y, int width, int height, const Color &color);
     void DrawTexture(int x, int y, Texture &texture);
+    void DrawSprite(int x, int y, Sprite &sprite, Object *object);
     void Render();
     void Save();
     void Restore();

@@ -10,3 +10,6 @@
 #include "texture.h"
 #include "graphic.h"
 #include "geometry.h"
+#include "asset.h"
+#include "log.h"
+#include "object.h"

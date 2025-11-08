@@ -4,6 +4,8 @@
 #include "screen.h"
 #include "graphic.h"
 
+class Object;
+
 class Loop {
 private:
     bool _is_running = false;
@@ -17,6 +19,7 @@ private:
     void Render();
     void Dispose();
 protected:
+    Object* _root_object = nullptr;
     Screen& _screen;
     Graphic _graphic;
     virtual void OnInitialize() {}
