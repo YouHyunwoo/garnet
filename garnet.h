@@ -4,7 +4,6 @@
 #include <windows.h>
 
 #include "loop.h"
-#include "input.h"
 #include "screen.h"
 #include "color.h"
 #include "texture.h"

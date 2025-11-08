@@ -2,20 +2,34 @@
 
 #include <windows.h>
 #include <conio.h>
-#include "input.h"
 #include "object.h"
 #include "log.h"
 
 constexpr uint32_t kMaxFrameCount = UINT_MAX;
 constexpr double kFpsUpdateUnit = 10.0;
 constexpr double kClockPerSec = static_cast<double>(CLOCKS_PER_SEC);
+constexpr int kEventBufferSize = 32;
+
+HANDLE input_handle;
+INPUT_RECORD input_record[kEventBufferSize];
 
 void Loop::Initialize() {
     _screen.Clear();
     
-    srand(static_cast<uint32_t>(time(NULL))); // initialize random seed
-    setvbuf(stdout, NULL, _IOFBF, _screen.area); // initialize screen buffer size
-    printf("\x1b[?25l"); // hide cursor
+    // * Initialize Random Seed
+    srand(static_cast<uint32_t>(time(NULL)));
+
+    // * Initialize Screen Buffer Size
+    setvbuf(stdout, NULL, _IOFBF, _screen.area);
+
+    // * Enable Mouse Mode
+    input_handle = GetStdHandle(STD_INPUT_HANDLE);
+    SetConsoleMode(input_handle, (ENABLE_WINDOW_INPUT | ENABLE_PROCESSED_INPUT | ENABLE_MOUSE_INPUT | ENABLE_EXTENDED_FLAGS) & ~ENABLE_QUICK_EDIT_MODE);
+
+    // * Hide Cursor
+    printf("\x1b[?25l");
+
+    // * Initialize Loop Variables
     _current_clock = _last_clock = _clock_for_fps = clock();
     frame_count = _frame_count_for_fps = 0;
     fps = 0;
@@ -28,6 +42,7 @@ void Loop::Initialize() {
 
 void Loop::Update() {
     UpdateTick();
+    UpdateEvent();
     if (IsKeyDown(VK_F4)) {
         Log::is_visible = !Log::is_visible;
     }
@@ -46,6 +61,71 @@ void Loop::UpdateTick() {
         _clock_for_fps = _current_clock;
     }
     _last_clock = _current_clock;
+}
+
+void Loop::UpdateEvent() {
+    event_queue = {};
+    for (int i = 0; i < 256; i++) {
+        is_key_up[i] = false;
+        if (is_key_down[i]) {
+            is_key_down[i] = false;
+            is_key_pressed[i] = true;
+        }
+    }
+    DWORD event_count = 0;
+    GetNumberOfConsoleInputEvents(input_handle, &event_count);
+    if (event_count > 0) {
+        DWORD events_read = 0;
+        ReadConsoleInput(input_handle, input_record, kEventBufferSize, &events_read);
+        for (DWORD i = 0; i < events_read; i++) {
+            switch (input_record[i].EventType) {
+                case KEY_EVENT: {
+                    const KEY_EVENT_RECORD& key_event = input_record[i].Event.KeyEvent;
+                    Event event;
+                    event.type = EventType::Key;
+                    event.key.type = key_event.bKeyDown ? KeyEventType::Press : KeyEventType::Release;
+                    event.key.key_code = key_event.wVirtualKeyCode;
+                    event_queue.push(event);
+                    if (key_event.bKeyDown) {
+                        is_key_down[key_event.wVirtualKeyCode] = true;
+                    }
+                    else {
+                        is_key_down[key_event.wVirtualKeyCode] = false;
+                        is_key_pressed[key_event.wVirtualKeyCode] = false;
+                        is_key_up[key_event.wVirtualKeyCode] = true;
+                    }
+                    break;
+                }
+                case MOUSE_EVENT: {
+                    const MOUSE_EVENT_RECORD& mouse_event = input_record[i].Event.MouseEvent;
+                    Event event;
+                    event.type = EventType::Mouse;
+                    switch (mouse_event.dwEventFlags) {
+                        case MOUSE_MOVED:
+                            event.mouse.type = MouseEventType::Move;
+                            break;
+                        case 0:
+                            if (mouse_event.dwButtonState != 0)
+                                event.mouse.type = MouseEventType::ButtonPress;
+                            else 
+                                event.mouse.type = MouseEventType::ButtonRelease;
+                            break;
+                        case MOUSE_WHEELED:
+                            event.mouse.type = MouseEventType::HorizontalWheel;
+                            break;
+                    }
+                    event.mouse.x = mouse_event.dwMousePosition.X;
+                    event.mouse.y = mouse_event.dwMousePosition.Y;
+                    event.mouse.button = mouse_event.dwButtonState;
+                    event.mouse.wheel_delta = static_cast<short>(HIWORD(mouse_event.dwButtonState));
+                    event_queue.push(event);
+                    mouse_x = mouse_event.dwMousePosition.X;
+                    mouse_y = mouse_event.dwMousePosition.Y;
+                    break;
+                }
+            }
+        }
+    }
 }
 
 void Loop::Render() {
@@ -93,6 +173,28 @@ void Loop::Run() {
     }
 
     Dispose();
+}
+
+bool Loop::IsKeyDown(int key_code) {
+    if (key_code < 0 || key_code >= 256) { return false; }
+    return is_key_down[key_code];
+}
+
+bool Loop::IsKeyPressed(int key_code) {
+    if (key_code < 0 || key_code >= 256) { return false; }
+    return is_key_pressed[key_code];
+}
+
+bool Loop::IsKeyUp(int key_code) {
+    if (key_code < 0 || key_code >= 256) { return false; }
+    return is_key_up[key_code];
+}
+
+bool Loop::PollEvent(Event& out_event) {
+    if (event_queue.empty()) { return false; }
+    out_event = event_queue.front();
+    event_queue.pop();
+    return true;
 }
 
 void Loop::Quit() { _is_running = false; }
