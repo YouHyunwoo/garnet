@@ -59,12 +59,14 @@ void Graphic::SetZIndex(double z_index) { _context.z_index = z_index; }
 void Graphic::DrawText(int x, int y, const std::string &text) {
     x += _context.x;
     y += _context.y >> 1;
-    if (!IsInBounds(x, y)) return;
-
     for (size_t i = 0, xi = x, yi = y; i < text.length(); i++) {
+        if (!IsInBounds(xi, yi)) continue;
         _buffer[yi * width + xi] = _context.cell;
         _buffer[yi * width + xi].is_empty = false;
         _buffer[yi * width + xi].character = text[i];
+        _buffer[yi * width + xi].color_mode = EColorMode::kDefault;
+        _canvas[yi * width * 2 + xi].is_empty = true;
+        _canvas[yi * width * 2 + width + xi].is_empty = true;
         if (++xi >= width) {
             xi = 0;
             if (++yi >= height) break;
@@ -85,9 +87,13 @@ void Graphic::DrawTextWithFormat(int x, int y, const char* format, ...) {
     char* buf = new char[len + 1];
     vsnprintf(buf, len + 1, format, args);
     for (uint32_t i = 0, xi = x, yi = y; i < len; i++) {
+        if (!IsInBounds(xi, yi)) continue;
         _buffer[yi * width + xi] = _context.cell;
         _buffer[yi * width + xi].is_empty = false;
         _buffer[yi * width + xi].character = buf[i];
+        _buffer[yi * width + xi].color_mode = EColorMode::kDefault;
+        _canvas[yi * width * 2 + xi].is_empty = true;
+        _canvas[yi * width * 2 + width + xi].is_empty = true;
         if (++xi >= width) {
             xi = 0;
             if (++yi >= height) break;

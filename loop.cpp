@@ -2,6 +2,8 @@
 
 #include <windows.h>
 #include <conio.h>
+#include "input.h"
+#include "log.h"
 
 constexpr uint32_t kMaxFrameCount = UINT_MAX;
 constexpr double kFpsUpdateUnit = 10.0;
@@ -23,6 +25,9 @@ void Loop::Initialize() {
 
 void Loop::Update() {
     UpdateTick();
+    if (IsKeyDown(VK_F4)) {
+        Log::is_visible = !Log::is_visible;
+    }
     OnUpdate(_delta_time);
     frame_count++;
     if (frame_count >= kMaxFrameCount)
@@ -51,6 +56,10 @@ void Loop::Render() {
     if (is_fps_visible) {
         _graphic.DrawTextWithFormat(0, 0, "frame: %lld, delta time: %lg", frame_count, _delta_time);
         _graphic.DrawTextWithFormat(0, 1, "fps: %lg", fps);
+    }
+
+    if (Log::is_visible) {
+        Log::Render(_graphic);
     }
 
     _graphic.Render();
