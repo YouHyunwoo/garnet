@@ -1,83 +1,76 @@
 #include "asset.h"
 
+#include "log.h"
 #include "texture.h"
 #include "sprite.h"
 #include "shader.h"
-#include "log.h"
+#include "material.h"
 
-std::unordered_map<std::string, Texture*> Asset::textures;
-std::unordered_map<std::string, Sprite*> Asset::sprites;
-std::unordered_map<std::string, Shader*> Asset::shaders;
+using namespace std;
+
+unordered_map<string, Texture*> Asset::Textures;
+unordered_map<string, Sprite*> Asset::Sprites;
+unordered_map<string, Shader*> Asset::Shaders;
+unordered_map<string, Material*> Asset::Materials;
 
 void Asset::Initialize(
-    std::unordered_map<std::string, std::string>& texture_info,
-    std::unordered_map<std::string, SpriteInfo>& sprite_info,
-    std::unordered_map<std::string, Shader*>& shader_info
+    unordered_map<string, string>& texture_info,
+    unordered_map<string, SpriteInfo>& sprite_info,
+    unordered_map<string, Shader*>& shader_info,
+    unordered_map<string, Material*>& material_info
 ) {
     for (auto& pair : texture_info) {
-        const std::string& name = pair.first;
-        const std::string& path = pair.second;
-        textures[name] = Texture::Load(path);
-        if (textures[name] == nullptr) {
+        const string& name = pair.first;
+        const string& path = pair.second;
+        Texture* texture = Texture::Load(path);
+        if (texture == nullptr) {
             Log::Error("Failed to load texture: " + path);
+            continue;
         }
+        Textures[name] = texture;
     }
 
     for (auto& pair : sprite_info) {
-        const std::string& name = pair.first;
-        Texture* texture = textures[name];
+        const string& name = pair.first;
+        Texture* texture = Textures[name];
         if (texture == nullptr) {
+            Log::Error("Failed to create sprite: texture not found for " + name);
             continue;
         }
-        sprites[name] = new Sprite(texture);
-        sprites[name]->pivot_x = pair.second.pivot_x;
-        sprites[name]->pivot_y = pair.second.pivot_y;
+        Sprites[name] = new Sprite(texture);
+        Sprites[name]->pivot_x = pair.second.pivot_x;
+        Sprites[name]->pivot_y = pair.second.pivot_y;
     }
 
     for (auto& pair : shader_info) {
-        const std::string& name = pair.first;
-        shaders[name] = pair.second;
-        sprites[name]->shader = shaders[name];
+        const string& name = pair.first;
+        Shaders[name] = pair.second;
+    }
+
+    for (auto& pair : material_info) {
+        const string& name = pair.first;
+        Materials[name] = pair.second;
     }
 }
 
 void Asset::Clear() {
-    for (auto& pair : textures) {
+    for (auto& pair : Textures) {
         delete pair.second;
     }
-    textures.clear();
+    Textures.clear();
 
-    for (auto& pair : sprites) {
+    for (auto& pair : Sprites) {
         delete pair.second;
     }
-    sprites.clear();
+    Sprites.clear();
 
-    for (auto& pair : shaders) {
+    for (auto& pair : Shaders) {
         delete pair.second;
     }
-    shaders.clear();
-}
+    Shaders.clear();
 
-Texture* Asset::GetTexture(const std::string& name) {
-    auto it = textures.find(name);
-    if (it != textures.end()) {
-        return it->second;
+    for (auto& pair : Materials) {
+        delete pair.second;
     }
-    return nullptr;
-}
-
-Sprite* Asset::GetSprite(const std::string& name) {
-    auto it = sprites.find(name);
-    if (it != sprites.end()) {
-        return it->second;
-    }
-    return nullptr;
-}
-
-Shader* Asset::GetShader(const std::string& name) {
-    auto it = shaders.find(name);
-    if (it != shaders.end()) {
-        return it->second;
-    }
-    return nullptr;
+    Materials.clear();
 }

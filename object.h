@@ -6,28 +6,57 @@
 #include "sprite.h"
 
 class Object;
+class Component;
+class Transform;
+
+struct Renderable {
+    Object* object;
+    bool has_renderer;
+};
 
 class ObjectRenderer {
 public:
     static std::vector<Object*> objects;
-    static void AddObject(Object* object);
+    static std::vector<Renderable*> renderables;
+    static void TryAddObject(Object* object);
     static void RemoveObject(Object* object);
     static void Render(Graphic& graphic);
 };
 
 class Object {
 public:
-    double x = 0.0, y = 0.0;
-    double z_index = 0.0;
-    std::vector<Object*> children;
     Object* parent = nullptr;
-    Sprite* sprite = nullptr;
+    std::vector<Object*> children;
+    std::vector<Component*> components;
+    Transform* transform = nullptr;
+    Object();
     ~Object();
     void AddChild(Object* child);
+    void AddComponent(Component* component);
+    void Update(double delta_time);
     void Render(Graphic& graphic);
     virtual void OnRender(Graphic& graphic) {}
-    void GetGlobalOrigin(double& out_x, double& out_y);
-    void GetGlobalPosition(double& out_x, double& out_y);
-    double GetGlobalX();
-    double GetGlobalY();
+    
+    template<typename T>
+    T* GetComponent() {
+        for (auto* comp : components) {
+            T* result = dynamic_cast<T*>(comp);
+            if (result != nullptr) {
+                return result;
+            }
+        }
+        return nullptr;
+    }
+    
+    template<typename T>
+    std::vector<T*> GetComponents() {
+        std::vector<T*> results;
+        for (auto* comp : components) {
+            T* result = dynamic_cast<T*>(comp);
+            if (result != nullptr) {
+                results.push_back(result);
+            }
+        }
+        return results;
+    }
 };

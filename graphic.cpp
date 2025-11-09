@@ -11,16 +11,10 @@
 #include "texture.h"
 #include "shader.h"
 #include "object.h"
+#include "components/renderer.h"
 
 constexpr BufferCell default_buffer_cell;
 constexpr CanvasCell default_canvas_cell;
-
-bool Graphic::IsInBounds(int x, int y) {
-    return (
-        0 <= x && x < static_cast<int>(width) &&
-        0 <= y && y < static_cast<int>(height)
-    );
-}
 
 Graphic::Graphic(Screen &screen) : _screen(screen), width(screen.width), height(screen.height << 1) {
     _buffer = new BufferCell[width * _screen.height];
@@ -37,6 +31,17 @@ void Graphic::Clear() {
         _buffer[i] = default_buffer_cell;
     for (uint32_t i = 0; i < width * height; i++)
         _canvas[i] = default_canvas_cell;
+}
+
+bool Graphic::IsInBounds(int x, int y) {
+    return (
+        0 <= x && x < static_cast<int>(width) &&
+        0 <= y && y < static_cast<int>(height)
+    );
+}
+
+bool Graphic::IsDrawable(int x, int y, double z_index) {
+    return IsInBounds(x, y) && z_index >= _canvas[y * width + x].z_index;
 }
 
 void Graphic::SetCharacter(char character) { _context.cell.character = character; }
@@ -315,42 +320,10 @@ void Graphic::DrawTexture(int x, int y, Texture &texture) {
     }
 }
 
-void Graphic::DrawSprite(int x, int y, Sprite &sprite, Object *object) {
-    Texture* texture = sprite.texture;
-    Shader* shader = sprite.shader;
-    FragmentInput frag_input;
-    frag_input.object = object;
-    frag_input.data = shader ? shader->data : nullptr;
-    
-    int tx = x - static_cast<int>(sprite.pivot_x * texture->width);
-    int ty = y - static_cast<int>(sprite.pivot_y * texture->height);
-    
-    Color color;
-    for (int r = 0; r < texture->height; r++) {
-        for (int c = 0; c < texture->width; c++) {
-            int wx = _context.x + tx + c;
-            int wy = _context.y + ty + r;
-            if (!IsInBounds(wx, wy)) continue;
-            if (_canvas[wy * width + wx].z_index > object->z_index) continue;
-
-            frag_input.world_x = wx;
-            frag_input.world_y = wy;
-            frag_input.local_x = static_cast<int>(object ? (tx + c - object->x) : (tx + c));
-            frag_input.local_y = static_cast<int>(object ? (ty + r - object->y) : (ty + r));
-            frag_input.x = c;
-            frag_input.y = r;
-            frag_input.u = static_cast<double>(c) / (texture->width - 1);
-            frag_input.v = static_cast<double>(r) / (texture->height - 1);
-
-            if (shader) {
-                color = shader->Shade(frag_input);
-            }
-            else {
-                texture->GetColor(c, r, color);
-            }
-
-            DrawPoint(tx + c, ty + r, color);
-        }
+void Graphic::DrawObject(Object &object) {
+    Renderer* renderer = object.GetComponent<Renderer>();
+    if (renderer) {
+        renderer->Render(*this);
     }
 }
 

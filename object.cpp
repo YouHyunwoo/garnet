@@ -1,8 +1,16 @@
 #include "object.h"
 
+#include "component.h"
+#include "components/transform.h"
+#include "components/renderer.h"
+#include "components/sprite_renderer.h"
+
 std::vector<Object*> ObjectRenderer::objects;
 
-void ObjectRenderer::AddObject(Object* object) {
+void ObjectRenderer::TryAddObject(Object* object) {
+    if (object == nullptr) { return; }
+    Renderer* renderer = object->GetComponent<Renderer>();
+    if (renderer == nullptr) { return; }
     objects.push_back(object);
 }
 
@@ -12,10 +20,15 @@ void ObjectRenderer::RemoveObject(Object* object) {
 
 void ObjectRenderer::Render(Graphic& graphic) {
     sort(objects.begin(), objects.end(), [](Object* a, Object* b) {
-        if (a->z_index == b->z_index) {
-            return a->GetGlobalY() < b->GetGlobalY();
+        SpriteRenderer* a_renderer = a->GetComponent<SpriteRenderer>();
+        if (a_renderer == nullptr) { return false; }
+        SpriteRenderer* b_renderer = b->GetComponent<SpriteRenderer>();
+        if (b_renderer == nullptr) { return false; }
+
+        if (a_renderer->z_index == b_renderer->z_index) {
+            return a->transform->GetGlobalY() < b->transform->GetGlobalY();
         }
-        return a->z_index < b->z_index;
+        return a_renderer->z_index < b_renderer->z_index;
     });
 
     for (auto& object : objects) {
@@ -23,8 +36,17 @@ void ObjectRenderer::Render(Graphic& graphic) {
     }
 }
 
+Object::Object() {
+    transform = new Transform();
+    AddComponent(transform);
+}
+
 Object::~Object() {
     ObjectRenderer::RemoveObject(this);
+    for (auto& comp : components) {
+        delete comp;
+    }
+    components.clear();
     for (auto& child : children) {
         delete child;
     }
@@ -34,54 +56,24 @@ Object::~Object() {
 void Object::AddChild(Object* child) {
     children.push_back(child);
     child->parent = this;
-    ObjectRenderer::AddObject(child);
+    ObjectRenderer::TryAddObject(child);
+}
+
+void Object::AddComponent(Component* component) {
+    components.push_back(component);
+    component->object = this;
+    ObjectRenderer::TryAddObject(this);
+}
+
+void Object::Update(double delta_time) {
+    for (auto& component : components)
+        component->Update(delta_time);
+
+    for (auto& child : children)
+        child->Update(delta_time);
 }
 
 void Object::Render(Graphic& graphic) {
-    double global_x = 0.0, global_y = 0.0;
-    GetGlobalOrigin(global_x, global_y);
-    graphic.Save();
-    graphic.Translate(static_cast<int32_t>(global_x + x), static_cast<int32_t>(global_y + y));
-    OnRender(graphic);
-    if (sprite != nullptr) {
-        graphic.DrawSprite(0, 0, *sprite, this);
-    }
-    graphic.Restore();
-}
-
-void Object::GetGlobalOrigin(double& out_x, double& out_y) {
-    out_x = 0;
-    out_y = 0;
-    Object* current = parent;
-    while (current != nullptr) {
-        out_x += current->x;
-        out_y += current->y;
-        current = current->parent;
-    }
-}
-
-void Object::GetGlobalPosition(double& out_x, double& out_y) {
-    GetGlobalOrigin(out_x, out_y);
-    out_x += x;
-    out_y += y;
-}
-
-double Object::GetGlobalX() {
-    double out_x = 0;
-    Object* current = this;
-    while (current != nullptr) {
-        out_x += current->x;
-        current = current->parent;
-    }
-    return out_x;
-}
-
-double Object::GetGlobalY() {
-    double out_y = 0;
-    Object* current = this;
-    while (current != nullptr) {
-        out_y += current->y;
-        current = current->parent;
-    }
-    return out_y;
+    for (auto& component : components)
+        component->Render(graphic);
 }

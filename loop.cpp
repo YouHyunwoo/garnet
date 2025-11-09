@@ -2,6 +2,7 @@
 
 #include <windows.h>
 #include <conio.h>
+#include "screen.h"
 #include "object.h"
 #include "log.h"
 
@@ -14,13 +15,13 @@ HANDLE input_handle;
 INPUT_RECORD input_record[kEventBufferSize];
 
 void Loop::Initialize() {
-    _screen.Clear();
+    screen.Clear();
     
     // * Initialize Random Seed
     srand(static_cast<uint32_t>(time(NULL)));
 
     // * Initialize Screen Buffer Size
-    setvbuf(stdout, NULL, _IOFBF, _screen.area);
+    setvbuf(stdout, NULL, _IOFBF, screen.area);
 
     // * Enable Mouse Mode
     input_handle = GetStdHandle(STD_INPUT_HANDLE);
@@ -34,8 +35,8 @@ void Loop::Initialize() {
     frame_count = _frame_count_for_fps = 0;
     fps = 0;
     _is_running = true;
-    _root_object = new Object();
-    ObjectRenderer::AddObject(_root_object);
+    root_object = new Object();
+    ObjectRenderer::TryAddObject(root_object);
 
     OnInitialize();
 }
@@ -129,30 +130,30 @@ void Loop::UpdateEvent() {
 }
 
 void Loop::Render() {
-    _screen.ReturnCursor();
-    _graphic.Clear();
+    screen.ReturnCursor();
+    graphic.Clear();
 
-    _graphic.Save();
-    ObjectRenderer::Render(_graphic);
-    _graphic.Restore();
-    _graphic.Save();
-    OnRender(_graphic);
-    _graphic.Restore();
+    graphic.Save();
+    ObjectRenderer::Render(graphic);
+    graphic.Restore();
+    graphic.Save();
+    OnRender(graphic);
+    graphic.Restore();
 
     if (is_fps_visible) {
-        _graphic.DrawTextWithFormat(0, 0, "frame: %lld, delta time: %lg", frame_count, _delta_time);
-        _graphic.DrawTextWithFormat(0, 1, "fps: %lg", fps);
+        graphic.DrawTextWithFormat(0, 0, "frame: %lld, delta time: %lg", frame_count, _delta_time);
+        graphic.DrawTextWithFormat(0, 1, "fps: %lg", fps);
     }
 
     if (Log::is_visible) {
-        Log::Render(_graphic);
+        Log::Render(graphic);
     }
 
-    _graphic.Render();
+    graphic.Render();
 }
 
 void Loop::Dispose() {
-    delete _root_object;
+    delete root_object;
 
     OnDispose();
 
@@ -161,7 +162,7 @@ void Loop::Dispose() {
 }
 
 Loop::Loop(Screen& screen)
-    : _screen(screen), _graphic(screen) {
+    : screen(screen), graphic(screen) {
 }
 
 void Loop::Run() {

@@ -45,7 +45,6 @@ private:
     CanvasCell *_canvas;
     GraphicContext _context;
     std::stack<GraphicContext> _contextStack;
-    bool IsInBounds(int x, int y);
     void RenderCanvas();
     void RenderBuffer();
 public:
@@ -53,6 +52,8 @@ public:
     Graphic(Screen &screen);
     ~Graphic();
     void Clear();
+    bool IsInBounds(int x, int y);
+    bool IsDrawable(int x, int y, double z_index);
     void SetCharacter(char character);
     void ResetCharacter();
     void SetDimMode();
@@ -76,7 +77,7 @@ public:
     void DrawRectangle(int x, int y, int width, int height, const Color &color);
     void FillRectangle(int x, int y, int width, int height, const Color &color);
     void DrawTexture(int x, int y, Texture &texture);
-    void DrawSprite(int x, int y, Sprite &sprite, Object *object);
+    void DrawObject(Object &object);
     void Render();
     void Save();
     void Restore();

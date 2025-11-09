@@ -2,10 +2,10 @@
 
 #include <time.h>
 #include <queue>
-#include "screen.h"
 #include "graphic.h"
 #include "event.h"
 
+class Screen;
 class Object;
 
 class Loop {
@@ -22,9 +22,9 @@ private:
     void Render();
     void Dispose();
 protected:
-    Object* _root_object = nullptr;
-    Screen& _screen;
-    Graphic _graphic;
+    Object* root_object = nullptr;
+    Screen& screen;
+    Graphic graphic;
     std::queue<Event> event_queue;
     bool is_key_down[256] = {};
     bool is_key_pressed[256] = {};
