@@ -13,7 +13,7 @@ void ObjectRenderer::RemoveObject(Object* object) {
 void ObjectRenderer::Render(Graphic& graphic) {
     sort(objects.begin(), objects.end(), [](Object* a, Object* b) {
         if (a->z_index == b->z_index) {
-            return a->y < b->y;
+            return a->GetGlobalY() < b->GetGlobalY();
         }
         return a->z_index < b->z_index;
     });
@@ -64,4 +64,24 @@ void Object::GetGlobalPosition(double& out_x, double& out_y) {
     GetGlobalOrigin(out_x, out_y);
     out_x += x;
     out_y += y;
+}
+
+double Object::GetGlobalX() {
+    double out_x = 0;
+    Object* current = this;
+    while (current != nullptr) {
+        out_x += current->x;
+        current = current->parent;
+    }
+    return out_x;
+}
+
+double Object::GetGlobalY() {
+    double out_y = 0;
+    Object* current = this;
+    while (current != nullptr) {
+        out_y += current->y;
+        current = current->parent;
+    }
+    return out_y;
 }

@@ -28,4 +28,6 @@ public:
     virtual void OnRender(Graphic& graphic) {}
     void GetGlobalOrigin(double& out_x, double& out_y);
     void GetGlobalPosition(double& out_x, double& out_y);
+    double GetGlobalX();
+    double GetGlobalY();
 };

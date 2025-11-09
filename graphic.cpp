@@ -328,8 +328,13 @@ void Graphic::DrawSprite(int x, int y, Sprite &sprite, Object *object) {
     Color color;
     for (int r = 0; r < texture->height; r++) {
         for (int c = 0; c < texture->width; c++) {
-            frag_input.world_x = _context.x + tx + c;
-            frag_input.world_y = _context.y + ty + r;
+            int wx = _context.x + tx + c;
+            int wy = _context.y + ty + r;
+            if (!IsInBounds(wx, wy)) continue;
+            if (_canvas[wy * width + wx].z_index > object->z_index) continue;
+
+            frag_input.world_x = wx;
+            frag_input.world_y = wy;
             frag_input.local_x = static_cast<int>(object ? (tx + c - object->x) : (tx + c));
             frag_input.local_y = static_cast<int>(object ? (ty + r - object->y) : (ty + r));
             frag_input.x = c;

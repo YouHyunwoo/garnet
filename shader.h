@@ -5,6 +5,6 @@
 
 class Shader {
 public:
-    void* data;
+    void* data = nullptr;
     virtual Color Shade(const FragmentInput &input) = 0;
 };
